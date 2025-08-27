@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<RenoiseScriptingTool doc_version="0">
+  <ApiVersion>6.2</ApiVersion>
+  <AutoUpgraded>false</AutoUpgraded>
+  <Id>com.renoisehackers.MidiConvertExtended</Id>
+  <Version>0.2</Version>
+  <Author>Dac Chartrand, Marvin Tjon, Bjorn Nesby, reaby, ffx</Author>
+  <Name>Midi Convert w/ extended export</Name>
+  <Category>MIDI</Category>
+  <Description>Converts a Renoise song into a MIDI file. Notes are grouped by instrument and exported per track. Creates "Export Song to MIDI..." in the  File menu, "Selection:Export to MIDI..." in the Pattern Editor menu, and an "Export Selection to MIDI" keybinding.</Description>
+  <Homepage>http://www.renoise.com</Homepage>
+</RenoiseScriptingTool>
