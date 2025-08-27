@@ -727,6 +727,11 @@ function export_midi()
     local track_map = {}
     local registerTrack = function(instr_idx)
         local tn = midi:newTrack()
+        local miop = RNS.instruments[instr_idx].midi_output_properties
+        track_map[instr_idx] = {
+            track_number = tn,
+            midi_channel = miop.channel ? (miop.channel-1) : 0
+        }
         -- Renoise Instrument Name as MIDI TrkName
         midi:addMsg(tn,
             '0 Meta TrkName "' .. instrumentTrackNames[instr_idx] .. " (" ..
@@ -739,11 +744,10 @@ function export_midi()
             string.format("%0.2X", instr_idx - 1) .. ": " ..
             string.gsub(RNS.instruments[instr_idx].name, '"', '') .. " / " .. instrumentTrackNames[instr_idx] .. '"'
         )
-        track_map[instr_idx] = {
-            track_number = tn,
-            --midi_channel = MIDI_CHANNEL,
-            midi_channel = RNS.instruments[instr_idx].midi_output_properties.channel,
-        }
+        if miop.channel and miop.program then
+            midi:addMsg(tn,
+                "PrCh ch=" .. (miop.channel-1) .. " p=" .. (miop.program-1))
+        end
         return track_map[instr_idx]
     end
 
