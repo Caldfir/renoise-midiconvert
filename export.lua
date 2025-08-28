@@ -728,6 +728,7 @@ function export_midi()
     local registerTrack = function(instr_idx)
         local tn = midi:newTrack()
         local ch = RNS.instruments[instr_idx].midi_output_properties.channel
+        local bk = RNS.instruments[instr_idx].midi_output_properties.bank
         local pg = RNS.instruments[instr_idx].midi_output_properties.program
         track_map[instr_idx] = {
             track_number = tn,
@@ -745,7 +746,12 @@ function export_midi()
             string.format("%0.2X", instr_idx - 1) .. ": " ..
             string.gsub(RNS.instruments[instr_idx].name, '"', '') .. " / " .. instrumentTrackNames[instr_idx] .. '"'
         )
-        if pg then
+        -- MIDI bank and program selection
+        if pg > 0 and pg <= 128 then
+            if bk > 0 and bk <= 128 then
+                midi:addMsg(tn,
+                    "0 Par ch=" .. ch .. " c=0" .. " v=" .. (bk-1))
+            end
             midi:addMsg(tn,
                 "0 PrCh ch=" .. ch .. " p=" .. (pg-1))
         end
