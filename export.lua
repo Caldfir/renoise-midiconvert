@@ -27,7 +27,7 @@ local MIDI_CHANNEL = 1   -- Initial MIDI channel
 
 local FILEPATH = nil
 local RNS = nil
-local fancyStatus = nil
+local fancyStatus = nil 
 
 local DATA = table.create()
 local DATA_BPM = table.create()
@@ -256,23 +256,60 @@ function export_build_data(plan)
                     tracks[track_index].type ~= renoise.Track.TRACK_TYPE_MASTER and
                     tracks[track_index].type ~= renoise.Track.TRACK_TYPE_SEND
                 then
-                  local deviceTypes = {
-                    { path = "Audio/Effects/Native/*Instr. MIDI Control", ccOffset = 20 }, 
-                    { path = "Audio/Effects/Native/*Instr. Automation", ccOffset = 102 }
-                  }
-                  for xd in ipairs(deviceTypes) do
-                    local foundDevice = getDeviceInTrack(tracks[track_index], deviceTypes[xd].path)
+
+                  if 1 then
+                    local devicePath = "Audio/Effects/Native/*Instr. MIDI Control"
+                    local deviceCC0 = 20
+                    local foundDevice = getDeviceInTrack(tracks[track_index], devicePath)
+                    if (foundDevice ~= nil) then
+                      print(foundDevice.name .. "[" .. track_index .. "] @" .. pos)
+                      local deviceAutomation = getAutomationOfDevice(current_pattern_track, foundDevice)
+                      if (deviceAutomation ~= nil) then
+                        -- put found automation to midi cc 21-31 (max 10)
+                        -- (midi cc 20 is used for pitchbend)
+                        local b = 1
+                        for x in ipairs(deviceAutomation) do
+                          local pname = deviceAutomation[x].dest_parameter.name
+                          if pname:find("Pitchbend") then
+                            print(pname .. ">> pb")
+                          elseif pname:find("Pressure") then
+                            print(pname .. ">> pr")
+                          else
+                            local _, _, ccn = pname:find("CC (%d+)")
+                            if ccn then print(pname .. ">> cc=" .. ccn)
+                            else print(pname .. ">> ??")
+                            end
+                          end
+                          for y = 1, #deviceAutomation[x].points do
+                            DATA_CC[i]:insert{
+                                cc_pos = pos + deviceAutomation[x].points[y].time,
+                                cc_number = string.format("%.2x", deviceCC0 + b),
+                                cc_value = string.format("%.2x", deviceAutomation[x].points[y].value * 127),
+                            }
+                          end
+                          b = b + 1
+                          if (b > 10) then
+                            break
+                          end
+                        end 
+                      end             
+                    end
+                  end
+
+                  if 1 then
+                    local devicePath = "Audio/Effects/Native/*Instr. Automation"
+                    local deviceCC0 = 102
+                    local foundDevice = getDeviceInTrack(tracks[track_index], devicePath)
                     if (foundDevice ~= nil) then
                       local deviceAutomation = getAutomationOfDevice(current_pattern_track, foundDevice)
                       if (deviceAutomation ~= nil) then
-                        -- put found automation to midi cc 21-31 and 102-112 (max 10)
-                        -- (midi cc 20 is used for pitchbend)
+                        -- put found automation to midi cc 102-112 (max 10)
                         local b = 1
                         for x in ipairs(deviceAutomation) do
                           for y = 1, #deviceAutomation[x].points do
                             DATA_CC[i]:insert{
                                 cc_pos = pos + deviceAutomation[x].points[y].time,
-                                cc_number = string.format("%.2x", deviceTypes[xd].ccOffset + b),
+                                cc_number = string.format("%.2x", deviceCC0 + b),
                                 cc_value = string.format("%.2x", deviceAutomation[x].points[y].value * 127),
                             }
                           end
