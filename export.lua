@@ -734,17 +734,18 @@ function export_midi()
             midi_channel = ch
         }
         -- Renoise Instrument Name as MIDI TrkName
+        local track_name = string.gsub(instrumentTrackNames[instr_idx], '"', '')
+        if track_name == nil or track_name == "" then
+            track_name = string.format("%0.2X", instr_idx - 1)
+        end
         midi:addMsg(tn,
-            '0 Meta TrkName "' .. instrumentTrackNames[instr_idx] .. " (" ..
-            string.format("%0.2X", instr_idx - 1) .. ": " ..
-            string.gsub(RNS.instruments[instr_idx].name, '"', '') .. ')"'
-        )
+            '0 Meta TrkName "' .. track_name .. '"')
         -- Renoise Instrument Name as MIDI InstrName
-        midi:addMsg(tn,
-            '0 Meta InstrName "' ..
-            string.format("%0.2X", instr_idx - 1) .. ": " ..
-            string.gsub(RNS.instruments[instr_idx].name, '"', '') .. " / " .. instrumentTrackNames[instr_idx] .. '"'
-        )
+        local instr_name = string.gsub(RNS.instruments[instr_idx].name, '"', '')
+        if instr_name and instr_name ~= "" then
+            midi:addMsg(tn,
+                '0 Meta InstrName "' .. instr_name .. '"')
+        end
         if pg then
             midi:addMsg(tn,
                 "0 PrCh ch=" .. ch .. " p=" .. (pg-1))
