@@ -521,7 +521,7 @@ function Midi:_getMsgStr(line)
         tempo, h, m, s, f, fh, zt, z, t, mc, vz, g, cnt, data = nil
 
   if ("PrCh" == msg[2]) then --0x0C
-    ch = assert(loadstring('local '.. msg[3] .. 'return ch'))() --chan
+    ch = assert(loadstring('local '.. msg[3] .. '; return ch'))() --chan
     p = assert(loadstring('local ' .. msg[4] .. '; return p'))() --prog
     return string.char(0xC0+ch-1, p)
 
