@@ -17,7 +17,7 @@ Thusly, this file is procedural. Each function is to be prepended with `export_`
 Good times.
 
 ]]-- 
- 
+
 --------------------------------------------------------------------------------
 -- Variables & Globals, captialized for easier recognition
 --------------------------------------------------------------------------------
@@ -27,7 +27,7 @@ local MIDI_CHANNEL = 1   -- Initial MIDI channel
 
 local FILEPATH = nil
 local RNS = nil
-local fancyStatus = nil 
+local fancyStatus = nil
 
 local DATA = table.create()
 local DATA_BPM = table.create()
@@ -35,7 +35,7 @@ local DATA_LPB = table.create()
 local DATA_TPL = table.create()
 local DATA_TICK_DELAY = table.create()
 local DATA_TICK_CUT = table.create()
-local DATA_CC = table.create() 
+local DATA_CC = table.create()
 local DATA_PB = table.create()
 local DATA_CHPR = table.create()
 local DATA_META = table.create()
@@ -315,7 +315,7 @@ function export_build_data(plan)
                           for y = 1, #deviceAutomation[x].points do
                             DATA_CC[i]:insert{
                                 cc_pos = pos + deviceAutomation[x].points[y].time,
-                                cc_number = string.format("%.2x", deviceCC0 + b),
+                                cc_number = string.format("%.2x", 102 + b),
                                 cc_value = string.format("%.2x", deviceAutomation[x].points[y].value * 127),
                             }
                           end
