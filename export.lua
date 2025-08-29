@@ -17,7 +17,7 @@ Thusly, this file is procedural. Each function is to be prepended with `export_`
 Good times.
 
 ]]-- 
-
+ 
 --------------------------------------------------------------------------------
 -- Variables & Globals, captialized for easier recognition
 --------------------------------------------------------------------------------
@@ -35,7 +35,7 @@ local DATA_LPB = table.create()
 local DATA_TPL = table.create()
 local DATA_TICK_DELAY = table.create()
 local DATA_TICK_CUT = table.create()
-local DATA_CC = table.create()
+local DATA_CC = table.create() 
 local DATA_PB = table.create()
 local DATA_CHPR = table.create()
 local DATA_META = table.create()
@@ -269,18 +269,17 @@ function export_build_data(plan)
                           local pname = deviceAutomation[x].dest_parameter.name
                           if pname:find("Pitchbend") then
                             for y = 1, #deviceAutomation[x].points do
-                              local val = deviceAutomation[x].points[y].value * 128
-                              local hival = math.floor(val) 
-                              local loval = math.floor((val - hival) * 127)
+                              local val = deviceAutomation[x].points[y].value * 0x8000
+                              local str = string.format("%.4x", math.min(val,0x7FFF))
                               DATA_PB[i]:insert{
                                   pos = pos + deviceAutomation[x].points[y].time,
-                                  number = string.format("%.2x", hival),
-                                  value = string.format("%.2x", loval),
+                                  number = str:sub(1,2),
+                                  value = str:sub(3,4),
                               }
                             end
                           elseif pname:find("Pressure") then
                             for y = 1, #deviceAutomation[x].points do
-                              local val = deviceAutomation[x].points[y].value * 127
+                              local val = deviceAutomation[x].points[y].value * 0xFF
                               DATA_CHPR[i]:insert{
                                   pos = pos + deviceAutomation[x].points[y].time,
                                   value = string.format("%.2x", val),
@@ -290,7 +289,7 @@ function export_build_data(plan)
                             local _, _, ccn = pname:find("CC (%d+)")
                             if ccn then
                               for y = 1, #deviceAutomation[x].points do
-                                local val = deviceAutomation[x].points[y].value * 127
+                                local val = deviceAutomation[x].points[y].value * 0xFF
                                 DATA_CC[i]:insert{
                                     cc_pos = pos + deviceAutomation[x].points[y].time,
                                     cc_number = string.format("%.2x", ccn),
@@ -721,7 +720,6 @@ function _export_midi_pb(tmap, sort_me, param, idx)
     local cc_pos = _export_pos_to_float(param.pos, 0, 0, idx)
     if cc_pos ~= false and cc_pos > 0 then
         local pitch = (tonumber(param.number,16)*0.5)*0x100 + (tonumber(param.value,16)*0.5)
-        print("pitch = " .. pitch)
         local msg = "Pb ch=" .. tmap.midi_channel .. " v=" .. pitch
         sort_me:insert{cc_pos, msg, tmap.track_number}
     end
