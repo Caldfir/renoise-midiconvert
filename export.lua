@@ -256,23 +256,66 @@ function export_build_data(plan)
                     tracks[track_index].type ~= renoise.Track.TRACK_TYPE_MASTER and
                     tracks[track_index].type ~= renoise.Track.TRACK_TYPE_SEND
                 then
-                  local deviceTypes = {
-                    { path = "Audio/Effects/Native/*Instr. MIDI Control", ccOffset = 20 }, 
-                    { path = "Audio/Effects/Native/*Instr. Automation", ccOffset = 102 }
-                  }
-                  for xd in ipairs(deviceTypes) do
-                    local foundDevice = getDeviceInTrack(tracks[track_index], deviceTypes[xd].path)
+
+                  if 1 then
+                    local devicePath = "Audio/Effects/Native/*Instr. MIDI Control"
+                    local foundDevice = getDeviceInTrack(tracks[track_index], devicePath)
                     if (foundDevice ~= nil) then
                       local deviceAutomation = getAutomationOfDevice(current_pattern_track, foundDevice)
                       if (deviceAutomation ~= nil) then
-                        -- put found automation to midi cc 21-31 and 102-112 (max 10)
-                        -- (midi cc 20 is used for pitchbend)
+                        -- put found automation to midi cc
+                        local ccnum
+                        for x in ipairs(deviceAutomation) do
+                          local pname = deviceAutomation[x].dest_parameter.name
+                          if pname:find("Pitchbend") then
+                            for y = 1, #deviceAutomation[x].points do
+                              local val = deviceAutomation[x].points[y].value * 0x8000
+                              local str = string.format("%.4x", math.min(val,0x7FFF))
+                              DATA_PB[i]:insert{
+                                  pos = pos + deviceAutomation[x].points[y].time,
+                                  number = str:sub(1,2),
+                                  value = str:sub(3,4),
+                              }
+                            end
+                          elseif pname:find("Pressure") then
+                            for y = 1, #deviceAutomation[x].points do
+                              local val = deviceAutomation[x].points[y].value * 0xFF
+                              DATA_CHPR[i]:insert{
+                                  pos = pos + deviceAutomation[x].points[y].time,
+                                  value = string.format("%.2x", val),
+                              }
+                            end
+                          else
+                            local _, _, ccn = pname:find("CC (%d+)")
+                            if ccn then
+                              for y = 1, #deviceAutomation[x].points do
+                                local val = deviceAutomation[x].points[y].value * 0xFF
+                                DATA_CC[i]:insert{
+                                    cc_pos = pos + deviceAutomation[x].points[y].time,
+                                    cc_number = string.format("%.2x", ccn),
+                                    cc_value = string.format("%.2x", val),
+                                }
+                              end
+                            end
+                          end
+                        end 
+                      end             
+                    end
+                  end
+
+                  if 1 then
+                    local devicePath = "Audio/Effects/Native/*Instr. Automation"
+                    local foundDevice = getDeviceInTrack(tracks[track_index], devicePath)
+                    if (foundDevice ~= nil) then
+                      local deviceAutomation = getAutomationOfDevice(current_pattern_track, foundDevice)
+                      if (deviceAutomation ~= nil) then
+                        -- put found automation to midi cc 102-112 (max 10)
                         local b = 1
                         for x in ipairs(deviceAutomation) do
                           for y = 1, #deviceAutomation[x].points do
                             DATA_CC[i]:insert{
                                 cc_pos = pos + deviceAutomation[x].points[y].time,
-                                cc_number = string.format("%.2x", deviceTypes[xd].ccOffset + b),
+                                cc_number = string.format("%.2x", 102 + b),
                                 cc_value = string.format("%.2x", deviceAutomation[x].points[y].value * 127),
                             }
                           end
@@ -676,11 +719,9 @@ function _export_midi_pb(tmap, sort_me, param, idx)
     -- Create MF2T message
     local cc_pos = _export_pos_to_float(param.pos, 0, 0, idx)
     if cc_pos ~= false and cc_pos > 0 then
-        local msg = "Pb ch=" .. tmap.midi_channel .. " v=" .. (tonumber(param.number,16)*0.5)*0x100+(tonumber(param.value,16)*0.5)
+        local pitch = (tonumber(param.number,16)*0.5)*0x100 + (tonumber(param.value,16)*0.5)
+        local msg = "Pb ch=" .. tmap.midi_channel .. " v=" .. pitch
         sort_me:insert{cc_pos, msg, tmap.track_number}
-        -- also write midi pitchbend to midi cc 20
-        local msg2 = "Par ch=" .. tmap.midi_channel .. " c=20" .. " v=" .. ((tonumber(param.number,16)*0.5)*0x100+(tonumber(param.value,16)*0.5))/128
-        sort_me:insert{cc_pos, msg2, tmap.track_number}
     end
 end
 function _export_midi_chpr(tmap, sort_me, param, idx)
@@ -689,9 +730,6 @@ function _export_midi_chpr(tmap, sort_me, param, idx)
     if cc_pos ~= false and cc_pos > 0 then
         local msg = "ChPr ch=" .. tmap.midi_channel .. " v=" .. tonumber(param.value,16)
         sort_me:insert{cc_pos, msg, tmap.track_number}
-        -- also write midi channel aftertouch to midi cc 102
-        local msg2 = "Par ch=" .. tmap.midi_channel .. " c=102" .. " v=" .. tonumber(param.value,16)
-        sort_me:insert{cc_pos, msg2, tmap.track_number}
     end
 end
 
@@ -728,6 +766,7 @@ function export_midi()
     local registerTrack = function(instr_idx)
         local tn = midi:newTrack()
         local ch = RNS.instruments[instr_idx].midi_output_properties.channel
+        local bk = RNS.instruments[instr_idx].midi_output_properties.bank
         local pg = RNS.instruments[instr_idx].midi_output_properties.program
         track_map[instr_idx] = {
             track_number = tn,
@@ -746,7 +785,12 @@ function export_midi()
             midi:addMsg(tn,
                 '0 Meta InstrName "' .. instr_name .. '"')
         end
-        if pg then
+        -- MIDI bank and program selection
+        if pg > 0 and pg <= 128 then
+            if bk > 0 and bk <= 128 then
+                midi:addMsg(tn,
+                    "0 Par ch=" .. ch .. " c=0" .. " v=" .. (bk-1))
+            end
             midi:addMsg(tn,
                 "0 PrCh ch=" .. ch .. " p=" .. (pg-1))
         end
