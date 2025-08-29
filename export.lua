@@ -259,37 +259,45 @@ function export_build_data(plan)
 
                   if 1 then
                     local devicePath = "Audio/Effects/Native/*Instr. MIDI Control"
-                    local deviceCC0 = 20
                     local foundDevice = getDeviceInTrack(tracks[track_index], devicePath)
                     if (foundDevice ~= nil) then
-                      print(foundDevice.name .. "[" .. track_index .. "] @" .. pos)
                       local deviceAutomation = getAutomationOfDevice(current_pattern_track, foundDevice)
                       if (deviceAutomation ~= nil) then
-                        -- put found automation to midi cc 21-31 (max 10)
-                        -- (midi cc 20 is used for pitchbend)
-                        local b = 1
+                        -- put found automation to midi cc
+                        local ccnum
                         for x in ipairs(deviceAutomation) do
                           local pname = deviceAutomation[x].dest_parameter.name
                           if pname:find("Pitchbend") then
-                            print(pname .. ">> pb")
+                            for y = 1, #deviceAutomation[x].points do
+                              local val = deviceAutomation[x].points[y].value * 128
+                              local hival = math.floor(val) 
+                              local loval = math.floor((val - hival) * 127)
+                              DATA_PB[i]:insert{
+                                  pos = pos + deviceAutomation[x].points[y].time,
+                                  number = string.format("%.2x", hival),
+                                  value = string.format("%.2x", loval),
+                              }
+                            end
                           elseif pname:find("Pressure") then
-                            print(pname .. ">> pr")
+                            for y = 1, #deviceAutomation[x].points do
+                              local val = deviceAutomation[x].points[y].value * 127
+                              DATA_CHPR[i]:insert{
+                                  pos = pos + deviceAutomation[x].points[y].time,
+                                  value = string.format("%.2x", val),
+                              }
+                            end
                           else
                             local _, _, ccn = pname:find("CC (%d+)")
-                            if ccn then print(pname .. ">> cc=" .. ccn)
-                            else print(pname .. ">> ??")
+                            if ccn then
+                              for y = 1, #deviceAutomation[x].points do
+                                local val = deviceAutomation[x].points[y].value * 127
+                                DATA_CC[i]:insert{
+                                    cc_pos = pos + deviceAutomation[x].points[y].time,
+                                    cc_number = string.format("%.2x", ccn),
+                                    cc_value = string.format("%.2x", val),
+                                }
+                              end
                             end
-                          end
-                          for y = 1, #deviceAutomation[x].points do
-                            DATA_CC[i]:insert{
-                                cc_pos = pos + deviceAutomation[x].points[y].time,
-                                cc_number = string.format("%.2x", deviceCC0 + b),
-                                cc_value = string.format("%.2x", deviceAutomation[x].points[y].value * 127),
-                            }
-                          end
-                          b = b + 1
-                          if (b > 10) then
-                            break
                           end
                         end 
                       end             
@@ -298,7 +306,6 @@ function export_build_data(plan)
 
                   if 1 then
                     local devicePath = "Audio/Effects/Native/*Instr. Automation"
-                    local deviceCC0 = 102
                     local foundDevice = getDeviceInTrack(tracks[track_index], devicePath)
                     if (foundDevice ~= nil) then
                       local deviceAutomation = getAutomationOfDevice(current_pattern_track, foundDevice)
@@ -713,11 +720,10 @@ function _export_midi_pb(tmap, sort_me, param, idx)
     -- Create MF2T message
     local cc_pos = _export_pos_to_float(param.pos, 0, 0, idx)
     if cc_pos ~= false and cc_pos > 0 then
-        local msg = "Pb ch=" .. tmap.midi_channel .. " v=" .. (tonumber(param.number,16)*0.5)*0x100+(tonumber(param.value,16)*0.5)
+        local pitch = (tonumber(param.number,16)*0.5)*0x100 + (tonumber(param.value,16)*0.5)
+        print("pitch = " .. pitch)
+        local msg = "Pb ch=" .. tmap.midi_channel .. " v=" .. pitch
         sort_me:insert{cc_pos, msg, tmap.track_number}
-        -- also write midi pitchbend to midi cc 20
-        local msg2 = "Par ch=" .. tmap.midi_channel .. " c=20" .. " v=" .. ((tonumber(param.number,16)*0.5)*0x100+(tonumber(param.value,16)*0.5))/128
-        sort_me:insert{cc_pos, msg2, tmap.track_number}
     end
 end
 function _export_midi_chpr(tmap, sort_me, param, idx)
@@ -726,9 +732,6 @@ function _export_midi_chpr(tmap, sort_me, param, idx)
     if cc_pos ~= false and cc_pos > 0 then
         local msg = "ChPr ch=" .. tmap.midi_channel .. " v=" .. tonumber(param.value,16)
         sort_me:insert{cc_pos, msg, tmap.track_number}
-        -- also write midi channel aftertouch to midi cc 102
-        local msg2 = "Par ch=" .. tmap.midi_channel .. " c=102" .. " v=" .. tonumber(param.value,16)
-        sort_me:insert{cc_pos, msg2, tmap.track_number}
     end
 end
 
