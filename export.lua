@@ -378,41 +378,6 @@ function export_build_data(plan)
                         local note_col = current_pattern_track:line(line_index).note_columns[column_index]
                         local fx_col = current_pattern_track:line(line_index).effect_columns[1]
 
-                        -- Look for MIDI commands in the right-most note-column
-
-                        -- Midi control messages (CC)
-                        if ('M0' == note_col.panning_string)
-                            and (column_index == total_note_columns)
-                            and (note_col.instrument_value ~= 255)
-                        then
-                            DATA_CC[i]:insert{
-                                cc_pos = pos,
-                                cc_number = fx_col.number_string,
-                                cc_value = fx_col.amount_string,
-                            }
-                        end
-                        -- Midi pitchbend messages
-                        if ('M1' == note_col.panning_string)
-                            and (column_index == total_note_columns)
-                            and (note_col.instrument_value ~= 255)
-                        then
-                            table.insert(DATA_PB[i], {
-                                pos = pos,
-                                number = fx_col.number_string,
-                                value = fx_col.amount_string,
-                            })
-                        end
-                        -- Channel aftertouch messages
-                        if ('M3' == note_col.panning_string)
-                            and (column_index == total_note_columns)
-                            and (note_col.instrument_value ~= 255)
-                        then
-                            table.insert(DATA_CHPR[i], {
-                                pos = pos,
-                                value = fx_col.amount_string,
-                            })
-                        end
-
                         -- Notes data
 
                         -- TODO:
@@ -537,6 +502,43 @@ function export_build_data(plan)
                                     .."\n .volume: "..tostring(DATA[i][j].volume)
                                 )
                             end
+                            
+                            -- Look for MIDI commands in the right-most note-column
+    
+                            -- Midi control messages (CC)
+                            if ('M0' == note_col.panning_string)
+                                and (column_index == total_note_columns)
+                                and (note_col.instrument_value ~= 255)
+                            then
+                                DATA_CC[i]:insert{
+                                    cc_pos = pos,
+                                    cc_number = fx_col.number_string,
+                                    cc_value = fx_col.amount_string,
+                                }
+                            end
+                            -- Midi pitchbend messages
+                            if ('M1' == note_col.panning_string)
+                                and (column_index == total_note_columns)
+                                and (note_col.instrument_value ~= 255)
+                            then
+                                table.insert(DATA_PB[i], {
+                                    pos = pos,
+                                    number = fx_col.number_string,
+                                    value = fx_col.amount_string,
+                                })
+                            end
+                            -- Channel aftertouch messages
+                            if ('M3' == note_col.panning_string)
+                                and (column_index == total_note_columns)
+                                and (note_col.instrument_value ~= 255)
+                            then
+                                print('M3')
+                                table.insert(DATA_CHPR[i], {
+                                    pos = pos,
+                                    value = fx_col.amount_string,
+                                })
+                            end
+                            
                         end
                         -- Next
                         pattern_previous = sequencer.pattern_sequence[sequence_index]
