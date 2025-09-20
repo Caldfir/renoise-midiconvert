@@ -15,6 +15,7 @@ Includes the following additions to the export of the tool:
 - pattern midi pitchbend -> MIDI CC 20 (for DAWs not supporting pitchbend import…)
 - pattern channel aftertouch
 - pattern channel aftertouch -> MIDI CC 102 (for DAWs not supporting pressure import…)
+- program change messages
 - sequence slot mute support
 - sequence slot mute -> note off support
 - corrected LPB
