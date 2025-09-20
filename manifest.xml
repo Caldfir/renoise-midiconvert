@@ -3,7 +3,7 @@
   <ApiVersion>6.2</ApiVersion>
   <AutoUpgraded>false</AutoUpgraded>
   <Id>com.renoisehackers.MidiConvertExtended</Id>
-  <Version>0.2</Version>
+  <Version>0.3</Version>
   <Author>Dac Chartrand, Marvin Tjon, Bjorn Nesby, reaby, ffx</Author>
   <Name>Midi Convert w/ extended export</Name>
   <Category>MIDI</Category>

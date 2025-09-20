@@ -37,6 +37,7 @@ local DATA_TICK_DELAY = table.create()
 local DATA_TICK_CUT = table.create()
 local DATA_CC = table.create()
 local DATA_PB = table.create()
+local DATA_PC = table.create()
 local DATA_CHPR = table.create()
 local DATA_META = table.create()
 
@@ -127,7 +128,7 @@ function export_build_data(plan)
     DATA:clear(); DATA_BPM:clear(); DATA_LPB:clear(); DATA_TPL:clear()
     DATA_TICK_DELAY:clear(); DATA_TICK_CUT:clear()
     LPB_LOOKUP_TABLE:clear();
-    DATA_CC:clear();DATA_PB:clear();DATA_CHPR:clear();DATA_META:clear()
+    DATA_CC:clear();DATA_PB:clear();DATA_PC:clear();DATA_CHPR:clear();DATA_META:clear()
 
     local instruments = RNS.instruments
     local tracks = RNS.tracks
@@ -154,6 +155,7 @@ function export_build_data(plan)
         DATA[i] = table.create() -- notes
         DATA_CC[i] = table.create() -- midi commands
         DATA_PB[i] = table.create() -- pitchbend commands
+        DATA_PC[i] = table.create() -- progchange commands
         DATA_CHPR[i] = table.create() -- channel pressure commands
         DATA_META[i] = table.create() -- meta data
     end
@@ -527,6 +529,17 @@ function export_build_data(plan)
                                     value = fx_col.amount_string,
                                 })
                             end
+                            -- Midi pitchbend messages
+                            if ('M2' == note_col.panning_string)
+                                and (column_index == total_note_columns)
+                                and (note_col.instrument_value ~= 255)
+                            then
+                                table.insert(DATA_PC[i], {
+                                    pos = pos,
+                                    number = fx_col.number_string,
+                                    value = fx_col.amount_string,
+                                })
+                            end
                             -- Channel aftertouch messages
                             if ('M3' == note_col.panning_string)
                                 and (column_index == total_note_columns)
@@ -726,6 +739,14 @@ function _export_midi_pb(tmap, sort_me, param, idx)
         sort_me:insert{cc_pos, msg, tmap.track_number}
     end
 end
+function _export_midi_pc(tmap, sort_me, param, idx)
+    -- Create MF2T message
+    local cc_pos = _export_pos_to_float(param.pos, 0, 0, idx)
+    if cc_pos ~= false and cc_pos > 0 then
+        local msg = "PrCh ch=" .. tmap.midi_channel .. " p=" .. tonumber(param.value, 16)
+        sort_me:insert{cc_pos, msg, tmap.track_number}
+    end
+end
 function _export_midi_chpr(tmap, sort_me, param, idx)
     -- Create MF2T message
     local cc_pos = _export_pos_to_float(param.pos, 0, 0, idx)
@@ -890,6 +911,23 @@ function export_midi()
                     fancyStatus:show_status(export_status_progress())
                     if COROUTINE_MODE then coroutine.yield() end
                     dbug(("Process(midi()) Instr: %d; PB Message: %d."):format(i, p))
+                end
+            end
+        end
+    end
+    -- Process MIDI-ProgramChange Messages
+    for i=1,#DATA_PC do
+        if table.count(DATA_PC[i]) > 0 then
+            local tmap = track_map[i]
+            if not tmap then
+                tmap = registerTrack(i)
+            end
+            for p=1,#DATA_PC[i] do
+                _export_midi_pc(tmap, sort_me, DATA_PC[i][p], idx)
+                if (p % yield_every == 0) then
+                    fancyStatus:show_status(export_status_progress())
+                    if COROUTINE_MODE then coroutine.yield() end
+                    dbug(("Process(midi()) Instr: %d; PC Message: %d."):format(i, p))
                 end
             end
         end
